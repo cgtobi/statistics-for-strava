@@ -75,6 +75,41 @@ class ImportActivityFilesCommandHandlerTest extends ContainerTestCase
         $this->assertMatchesSnapshot($output, new ConsoleOutputSnapshotDriver());
     }
 
+    public function testHandleSkipsByteDifferentExportOfSameActivity(): void
+    {
+        $bytes = $this->fixture('activity.tcx');
+
+        $this->dropInWatchFolder('ride.tcx', $bytes);
+        $this->handler->handle(new ImportActivityFiles(new SpyOutput()));
+
+        // Same activity, byte-different re-export (trailing whitespace only) =>
+        // different file hash, but identical parsed activity identity.
+        $this->dropInWatchFolder('ride-reexport.tcx', $bytes."\n  \n");
+        $output = new SpyOutput();
+        $this->handler->handle(new ImportActivityFiles($output));
+
+        $this->assertCount(1, $this->getContainer()->get(FileImportRepository::class)->findAll());
+        $this->assertCount(1, $this->getContainer()->get(ActivityRepository::class)->findAll());
+        $this->assertMatchesSnapshot($output, new ConsoleOutputSnapshotDriver());
+    }
+
+    public function testHandleSkipsByteDifferentExportsOfSameActivityWithinSingleRun(): void
+    {
+        $bytes = $this->fixture('activity.tcx');
+
+        // Three byte-different exports of the same activity, all present in the
+        // watch folder during a single import run.
+        $this->dropInWatchFolder('ride.tcx', $bytes);
+        $this->dropInWatchFolder('ride(1).tcx', $bytes."\n  \n");
+        $this->dropInWatchFolder('ride(2).tcx', $bytes."\n   \n");
+
+        $output = new SpyOutput();
+        $this->handler->handle(new ImportActivityFiles($output));
+
+        $this->assertCount(1, $this->getContainer()->get(ActivityRepository::class)->findAll());
+        $this->assertMatchesSnapshot($output, new ConsoleOutputSnapshotDriver());
+    }
+
     public function testHandleSkipsUnsupportedFileType(): void
     {
         $this->dropInWatchFolder('notes.txt', 'just some text');

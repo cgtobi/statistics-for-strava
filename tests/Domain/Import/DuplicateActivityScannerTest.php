@@ -8,12 +8,14 @@ use App\Domain\Activity\ActivityRepository;
 use App\Domain\Activity\ActivityWithRawData;
 use App\Domain\Activity\DbalActivityRepository;
 use App\Domain\Activity\ImportSource;
+use App\Domain\Activity\SportType\SportType;
 use App\Domain\Import\DbalFileImportRepository;
 use App\Domain\Import\DuplicateActivityScanner;
 use App\Domain\Import\FileImportRepository;
 use App\Domain\Import\FileParser\RawActivityFile;
 use App\Infrastructure\ValueObject\String\ExternalReferenceId;
 use App\Infrastructure\ValueObject\String\Path;
+use App\Infrastructure\ValueObject\Time\SerializableDateTime;
 use App\Tests\ContainerTestCase;
 use App\Tests\Domain\Activity\ActivityBuilder;
 
@@ -59,6 +61,114 @@ class DuplicateActivityScannerTest extends ContainerTestCase
         $file = RawActivityFile::from(Path::fromString('ride.fit'), 'raw-fit-bytes');
 
         $this->assertFalse($this->duplicateActivityScanner->isDuplicate($file));
+    }
+
+    public function testItIsDuplicateActivityWhenStartSportAndDurationMatch(): void
+    {
+        $this->addActivityWithDetails(
+            SerializableDateTime::fromString('2025-01-01 10:00:00'),
+            SportType::RIDE,
+            3600,
+        );
+
+        $candidate = $this->buildActivity(
+            SerializableDateTime::fromString('2025-01-01 10:00:00'),
+            SportType::RIDE,
+            3600,
+        );
+
+        $this->assertTrue($this->duplicateActivityScanner->isDuplicateActivity($candidate));
+    }
+
+    public function testItIsDuplicateActivityWhenStartAndDurationWithinTolerance(): void
+    {
+        $this->addActivityWithDetails(
+            SerializableDateTime::fromString('2025-01-01 10:00:00'),
+            SportType::RIDE,
+            3600,
+        );
+
+        $candidate = $this->buildActivity(
+            SerializableDateTime::fromString('2025-01-01 10:00:03'),
+            SportType::RIDE,
+            3603,
+        );
+
+        $this->assertTrue($this->duplicateActivityScanner->isDuplicateActivity($candidate));
+    }
+
+    public function testItIsNotDuplicateActivityWhenSportDiffers(): void
+    {
+        $this->addActivityWithDetails(
+            SerializableDateTime::fromString('2025-01-01 10:00:00'),
+            SportType::RIDE,
+            3600,
+        );
+
+        $candidate = $this->buildActivity(
+            SerializableDateTime::fromString('2025-01-01 10:00:00'),
+            SportType::RUN,
+            3600,
+        );
+
+        $this->assertFalse($this->duplicateActivityScanner->isDuplicateActivity($candidate));
+    }
+
+    public function testItIsNotDuplicateActivityWhenStartOutsideTolerance(): void
+    {
+        $this->addActivityWithDetails(
+            SerializableDateTime::fromString('2025-01-01 10:00:00'),
+            SportType::RIDE,
+            3600,
+        );
+
+        $candidate = $this->buildActivity(
+            SerializableDateTime::fromString('2025-01-01 10:01:00'),
+            SportType::RIDE,
+            3600,
+        );
+
+        $this->assertFalse($this->duplicateActivityScanner->isDuplicateActivity($candidate));
+    }
+
+    public function testItIsNotDuplicateActivityWhenDurationOutsideTolerance(): void
+    {
+        $this->addActivityWithDetails(
+            SerializableDateTime::fromString('2025-01-01 10:00:00'),
+            SportType::RIDE,
+            3600,
+        );
+
+        $candidate = $this->buildActivity(
+            SerializableDateTime::fromString('2025-01-01 10:00:00'),
+            SportType::RIDE,
+            3700,
+        );
+
+        $this->assertFalse($this->duplicateActivityScanner->isDuplicateActivity($candidate));
+    }
+
+    private function buildActivity(
+        SerializableDateTime $startDateTime,
+        SportType $sportType,
+        int $movingTimeInSeconds,
+    ): \App\Domain\Activity\Activity {
+        return ActivityBuilder::fromDefaults()
+            ->withStartDateTime($startDateTime)
+            ->withSportType($sportType)
+            ->withMovingTimeInSeconds($movingTimeInSeconds)
+            ->build();
+    }
+
+    private function addActivityWithDetails(
+        SerializableDateTime $startDateTime,
+        SportType $sportType,
+        int $movingTimeInSeconds,
+    ): void {
+        $this->activityRepository->add(ActivityWithRawData::fromState(
+            $this->buildActivity($startDateTime, $sportType, $movingTimeInSeconds),
+            ['raw' => 'data'],
+        ));
     }
 
     private function addActivity(ImportSource $importSource, ExternalReferenceId $externalReferenceId): void

@@ -34,9 +34,16 @@ final readonly class ParseActivityFile implements ImportActivityFileStep
         }
 
         $parsedFile = $this->activityFileParsers->parse($file);
+        $activity = $parsedFile->getActivity();
+
+        // Same activity already imported from a byte-different file (file -> file),
+        // matched on the parsed activity's natural identity.
+        if ($this->duplicateActivityScanner->isDuplicateActivity($activity)) {
+            throw new SkipActivityFileImport();
+        }
 
         return $context
-            ->withActivity($parsedFile->getActivity())
+            ->withActivity($activity)
             ->withStreams($parsedFile->getStreams())
             ->withLaps($parsedFile->getLaps());
     }
