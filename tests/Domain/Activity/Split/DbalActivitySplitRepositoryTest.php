@@ -181,6 +181,7 @@ class DbalActivitySplitRepositoryTest extends ContainerTestCase
         $this->addActivity('run-without-splits', SportType::RUN);
         $this->addActivity('run-with-splits', SportType::RUN);
         $this->addActivity('swim-without-splits', SportType::SWIM);
+        $this->addActivity('ride-without-splits', SportType::RIDE);
 
         // Run activity with splits already imported — should NOT be returned.
         $this->activitySplitRepository->add(ActivitySplitBuilder::fromDefaults()

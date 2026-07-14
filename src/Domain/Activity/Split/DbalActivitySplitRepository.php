@@ -114,7 +114,7 @@ final readonly class DbalActivitySplitRepository extends DbalRepository implemen
             fn (SportType $sportType) => $sportType->value,
             array_filter(
                 SportType::cases(),
-                fn (SportType $sportType): bool => $sportType->getActivityType()->supportsDistanceBreakdownStats(),
+                fn (SportType $sportType): bool => $sportType->getActivityType()->supportsActivitySplits(),
             ),
         );
 

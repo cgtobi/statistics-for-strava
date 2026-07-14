@@ -95,6 +95,14 @@ enum ActivityType: string implements TranslatableInterface
         return self::RUN === $this;
     }
 
+    public function supportsActivitySplits(): bool
+    {
+        return match ($this) {
+            self::RUN, self::WALK => true,
+            default => false,
+        };
+    }
+
     public function supportsBestEffortsStats(): bool
     {
         return [] !== $this->getDistancesForBestEffortCalculation();

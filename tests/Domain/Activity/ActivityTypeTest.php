@@ -37,4 +37,14 @@ class ActivityTypeTest extends ContainerTestCase
         }
         $this->assertMatchesJsonSnapshot($snapshot);
     }
+
+    public function testSupportsActivitySplits(): void
+    {
+        $this->assertTrue(ActivityType::RUN->supportsActivitySplits());
+        $this->assertTrue(ActivityType::WALK->supportsActivitySplits());
+
+        $this->assertFalse(ActivityType::RIDE->supportsActivitySplits());
+        $this->assertFalse(ActivityType::SKATING->supportsActivitySplits());
+        $this->assertFalse(ActivityType::WATER_SPORTS->supportsActivitySplits());
+    }
 }

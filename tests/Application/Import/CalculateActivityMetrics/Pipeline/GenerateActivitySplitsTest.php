@@ -49,6 +49,25 @@ class GenerateActivitySplitsTest extends ContainerTestCase
         $this->assertEqualsWithDelta(1750.0, $imperialSplits->toArray()[0]->getDistance()->toFloat(), 0.001);
     }
 
+    public function testItGeneratesSplitsForWalk(): void
+    {
+        $activityId = ActivityId::fromUnprefixed('walk-1');
+        $this->addActivity($activityId, SportType::WALK);
+        $this->addDistanceTimeAltitudeStreams(
+            $activityId,
+            distances: [0, 250, 500, 750, 1000, 1250, 1500, 1750, 2000],
+            times: [0, 50, 100, 150, 200, 250, 300, 350, 400],
+            altitudes: [10, 12, 14, 16, 18, 20, 22, 24, 26],
+        );
+
+        $output = new SpyOutput();
+        $this->generateActivitySplits->process($output);
+
+        $metricSplits = $this->activitySplitRepository->findBy($activityId, UnitSystem::METRIC);
+        $this->assertCount(2, $metricSplits->toArray());
+        $this->assertEqualsWithDelta(1000.0, $metricSplits->toArray()[0]->getDistance()->toFloat(), 0.001);
+    }
+
     public function testItSkipsActivityThatAlreadyHasSplits(): void
     {
         $activityId = ActivityId::fromUnprefixed('run-existing');
