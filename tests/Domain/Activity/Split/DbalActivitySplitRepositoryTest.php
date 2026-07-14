@@ -176,6 +176,26 @@ class DbalActivitySplitRepositoryTest extends ContainerTestCase
         );
     }
 
+    public function testFindActivityIdsWithoutSplits(): void
+    {
+        $this->addActivity('run-without-splits', SportType::RUN);
+        $this->addActivity('run-with-splits', SportType::RUN);
+        $this->addActivity('swim-without-splits', SportType::SWIM);
+
+        // Run activity with splits already imported — should NOT be returned.
+        $this->activitySplitRepository->add(ActivitySplitBuilder::fromDefaults()
+            ->withActivityId(ActivityId::fromUnprefixed('run-with-splits'))
+            ->withSplitNumber(1)
+            ->build());
+
+        $this->assertEquals(
+            ActivityIds::fromArray([
+                ActivityId::fromUnprefixed('run-without-splits'),
+            ]),
+            $this->activitySplitRepository->findActivityIdsWithoutSplits(),
+        );
+    }
+
     public function testUpdate(): void
     {
         $this->activitySplitRepository->add(ActivitySplitBuilder::fromDefaults()

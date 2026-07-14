@@ -108,6 +108,31 @@ final readonly class DbalActivitySplitRepository extends DbalRepository implemen
         ));
     }
 
+    public function findActivityIdsWithoutSplits(): ActivityIds
+    {
+        $supportedSportTypes = array_map(
+            fn (SportType $sportType) => $sportType->value,
+            array_filter(
+                SportType::cases(),
+                fn (SportType $sportType): bool => $sportType->getActivityType()->supportsDistanceBreakdownStats(),
+            ),
+        );
+
+        $sql = 'SELECT a.activityId FROM Activity a
+                WHERE a.sportType IN (:sportTypes)
+                AND NOT EXISTS (SELECT 1 FROM ActivitySplit s WHERE s.activityId = a.activityId)
+                ORDER BY a.activityId';
+
+        return ActivityIds::fromArray(array_map(
+            ActivityId::fromString(...),
+            $this->connection->executeQuery($sql, [
+                'sportTypes' => $supportedSportTypes,
+            ], [
+                'sportTypes' => ArrayParameterType::STRING,
+            ])->fetchFirstColumn()
+        ));
+    }
+
     public function deleteForActivity(ActivityId $activityId): void
     {
         $sql = 'DELETE FROM ActivitySplit WHERE activityId = :activityId';
